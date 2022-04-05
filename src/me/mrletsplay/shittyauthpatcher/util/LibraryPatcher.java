@@ -13,6 +13,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
 import me.mrletsplay.mrcore.misc.classfile.ByteCode;
@@ -156,7 +157,7 @@ public class LibraryPatcher {
 	 * @throws PatchingException If patching fails
 	 */
 	public static void patchMinecraft(Path minecraft, Path outputFile, ServerConfiguration serverConfiguration) throws IOException, PatchingException {
-		System.out.println("Patching minecraft");
+		System.out.println("Patching Minecraft");
 		
 		Files.copy(minecraft, outputFile, StandardCopyOption.REPLACE_EXISTING);
 		
@@ -169,12 +170,18 @@ public class LibraryPatcher {
 				}
 				
 				Manifest newManifest = new Manifest();
+				newManifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
 				newManifest.getMainAttributes().putValue("Main-Class", oldManifest.getMainAttributes().getValue("Main-Class"));
 				
 				try(OutputStream out = Files.newOutputStream(manifestPath)) {
 					newManifest.write(out);
 				}
 			}
+			
+			Files.deleteIfExists(fs.getPath("/META-INF/MOJANGCS.RSA"));
+			Files.deleteIfExists(fs.getPath("/META-INF/MOJANGCS.SF"));
+			Files.deleteIfExists(fs.getPath("/META-INF/MOJANG_C.DSA"));
+			Files.deleteIfExists(fs.getPath("/META-INF/MOJANG_C.SF"));
 			
 			Files.walk(fs.getPath("/")).forEach(f -> {
 				try {
@@ -191,12 +198,12 @@ public class LibraryPatcher {
 						cf.write(fOut);
 					}
 				}catch(IOException e) {
-					throw new PatchingException("Failed to patch minecraft.jar", e);
+					throw new PatchingException("Failed to patch Minecraft", e);
 				}
 			});
 		}
 		
-		System.out.println("Done patching minecraft!");
+		System.out.println("Done patching Minecraft!");
 	}
 	
 	private static void replaceStrings(ClassFile cf, String find, String replace) {
