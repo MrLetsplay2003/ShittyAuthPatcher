@@ -225,7 +225,7 @@ public class LibraryPatcher {
 		
 		Files.copy(server, outputFile, StandardCopyOption.REPLACE_EXISTING);
 		
-		try(FileSystem fs = FileSystems.newFileSystem(outputFile)) {
+		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
 			Path authlibFolder = fs.getPath("/META-INF/libraries/com/mojang/authlib");
 			if(!Files.exists(authlibFolder)) {
 				System.out.println("No authlib found, not patching server");
