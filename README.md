@@ -39,7 +39,7 @@ To patch a server jar file, use the `--server` option
 
 e.g. with `https://your.server` being a server running [ShittyAuthServer](https://github.com/MrLetsplay2003/ShittyAuthServer):
 ```sh
-$ java -jar ShittyAuthPatcher-1.0.jar \
+$ java -jar ShittyAuthPatcher-VERSION.jar \
     --server \
     --all-server https://your.server \
     --server-jar server.jar \
