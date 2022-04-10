@@ -35,7 +35,8 @@ public class LibraryPatcher {
 		DEFAULT_ACCOUNTS_SERVER = "https://api.mojang.com",
 		DEFAULT_SESSION_SERVER = "https://sessionserver.mojang.com",
 		DEFAULT_SERVICES_SERVER = "https://api.minecraftservices.com",
-		LEGACY_SKIN_SERVER = "http://skins.minecraft.net";
+		LEGACY_SKIN_SERVER = "http://skins.minecraft.net",
+		CLIENT_BRAND = "vanilla";
 	
 	/**
 	 * Patches the authlib jar file
@@ -139,7 +140,7 @@ public class LibraryPatcher {
 			}
 			
 			Path pubkeyPath = fs.getPath("yggdrasil_session_pubkey.der");
-			File launcherPubkeyFile = new File("shittyauthlauncher/yggdrasil_session_pubkey.der");
+			File launcherPubkeyFile = new File("minersonline/yggdrasil_session_pubkey.der");
 			if(launcherPubkeyFile.exists()) {
 				Files.copy(launcherPubkeyFile.toPath(), pubkeyPath, StandardCopyOption.REPLACE_EXISTING);
 			}
@@ -147,6 +148,54 @@ public class LibraryPatcher {
 		
 		System.out.println("Done patching authlib!");
 	}
+
+	/**
+	 * Mods the minecraft jar file.
+	 * @param minecraft Path to the minecraft jar file
+	 * @param outputFile Path to store the patched jar file
+	 * @param brand The brand of the client to identify itself, normally "vanilla"
+	 * @param mainClass The new main class as a string of the path in the jar, including the .class extension. e.g. net/minecraft/client/ClientBrandRetriever.class
+	 * @param oldMainClass The name of the old main class
+	 */
+	public static void modMinecraft(Path minecraft, Path outputFile, String brand, String mainClass, String oldMainClass) throws IOException, PatchingException {
+		System.out.println("Modding Minecraft");
+
+		Files.copy(minecraft, outputFile, StandardCopyOption.REPLACE_EXISTING);
+
+		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
+			Path manifestPath = fs.getPath("/META-INF/MANIFEST.MF");
+			if(Files.exists(manifestPath)) {
+				Manifest newManifest = new Manifest();
+				newManifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+				System.out.println("Old main class is "+oldMainClass);
+				String fixedMain = mainClass.replace("/", ".").replace(".class", "");
+				newManifest.getMainAttributes().putValue("Main-Class", fixedMain);
+
+				try(OutputStream out = Files.newOutputStream(manifestPath)) {
+					newManifest.write(out);
+				}
+			}
+		}
+
+		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
+			Path environment = fs.getPath("net/minecraft/client/ClientBrandRetriever.class");
+			if (Files.exists(environment)) {
+				ClassFile environmentClass;
+				try (InputStream in = Files.newInputStream(environment)) {
+					environmentClass = new ClassFile(in);
+				}
+
+				replaceStrings(environmentClass, CLIENT_BRAND, brand);
+
+				try (OutputStream out = Files.newOutputStream(environment)) {
+					environmentClass.write(out);
+				}
+			}
+		}
+
+		System.out.println("Done modding Minecraft!");
+	}
+
 	
 	/**
 	 * Patches the minecraft jar file. Only needed for MC version &lt; 1.7.6, as the new skins API was introduced in release 1.7.6
