@@ -36,7 +36,15 @@ public class LibraryPatcher {
 		DEFAULT_SESSION_SERVER = "https://sessionserver.mojang.com",
 		DEFAULT_SERVICES_SERVER = "https://api.minecraftservices.com",
 		LEGACY_SKIN_SERVER = "http://skins.minecraft.net",
-		CLIENT_BRAND = "vanilla";
+		CLIENT_BRAND = "vanilla",
+		OLD_LEGACY_SKIN_SERVER = "http://s3.amazonaws.com/MinecraftSkins/",
+		OLD_LEGACY_CLOAK_SERVER = "http://s3.amazonaws.com/MinecraftCloaks/",
+		OLD_OLD_LEGACY_SKIN_SERVER = "http://www.minecraft.net/skin/",
+		OLD_OLD_LEGACY_CLOAK_SERVER = "http://www.minecraft.net/cloak/get.jsp?user=",
+		LEGACY_SESSION_SERVER = "http://session.minecraft.net",
+		LEGACY_AUTHENTICATION_SERVER = "https://login.minecraft.net",
+		OLD_LEGACY_SESSION_SERVER = "http://www.minecraft.net/game/";
+
 	
 	/**
 	 * Patches the authlib jar file
@@ -54,6 +62,10 @@ public class LibraryPatcher {
 		
 		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
 			Path sessionService = fs.getPath("com/mojang/authlib/yggdrasil/YggdrasilMinecraftSessionService.class");
+			if(!Files.exists(sessionService)) {
+				System.out.println("YggdrasilMinecraftSessionService.class not found, assuming no authlib");
+				return;
+			}
 			
 			ClassFile sessionClass;
 			try(InputStream in = Files.newInputStream(sessionService)) {
@@ -231,28 +243,39 @@ public class LibraryPatcher {
 			Files.deleteIfExists(fs.getPath("/META-INF/MOJANGCS.SF"));
 			Files.deleteIfExists(fs.getPath("/META-INF/MOJANG_C.DSA"));
 			Files.deleteIfExists(fs.getPath("/META-INF/MOJANG_C.SF"));
+			Files.deleteIfExists(fs.getPath("/META-INF/CODESIGN.RSA"));
+			Files.deleteIfExists(fs.getPath("/META-INF/CODESIGN.SF"));
 			
-			Files.walk(fs.getPath("/")).forEach(f -> {
-				try {
-					if(Files.isDirectory(f) || !f.getFileName().toString().endsWith(".class")) return;
-					
-					ClassFile cf;
-					try(InputStream in = Files.newInputStream(f)) {
-						cf = new ClassFile(in);
-					}
-					
-					replaceStrings(cf, LEGACY_SKIN_SERVER, serverConfiguration.sessionServer);
-					
-					try(OutputStream fOut = Files.newOutputStream(f)) {
-						cf.write(fOut);
-					}
-				}catch(IOException e) {
-					throw new PatchingException("Failed to patch Minecraft", e);
-				}
-			});
+			Files.walk(fs.getPath("/")).forEach(f -> replaceLegacyServers(f, serverConfiguration));
 		}
 		
 		System.out.println("Done patching Minecraft!");
+	}
+	
+	private static void replaceLegacyServers(Path path, ServerConfiguration serverConfiguration) {
+		try {
+			if(Files.isDirectory(path) || !path.getFileName().toString().endsWith(".class")) return;
+			
+			ClassFile cf;
+			try(InputStream in = Files.newInputStream(path)) {
+				cf = new ClassFile(in);
+			}
+			
+			replaceStrings(cf, LEGACY_SKIN_SERVER, serverConfiguration.sessionServer);
+			replaceStrings(cf, LEGACY_SESSION_SERVER, serverConfiguration.sessionServer);
+			replaceStrings(cf, LEGACY_AUTHENTICATION_SERVER, serverConfiguration.sessionServer);
+			replaceStrings(cf, OLD_LEGACY_SKIN_SERVER, serverConfiguration.sessionServer + "/MinecraftSkins/");
+			replaceStrings(cf, OLD_LEGACY_CLOAK_SERVER, serverConfiguration.sessionServer + "/MinecraftCloaks/");
+			replaceStrings(cf, OLD_OLD_LEGACY_SKIN_SERVER, serverConfiguration.sessionServer + "/MinecraftSkins/");
+			replaceStrings(cf, OLD_OLD_LEGACY_CLOAK_SERVER, serverConfiguration.sessionServer + "/MinecraftCloaks/");
+			replaceStrings(cf, OLD_LEGACY_SESSION_SERVER, serverConfiguration.sessionServer + "/game/");
+			
+			try(OutputStream fOut = Files.newOutputStream(path)) {
+				cf.write(fOut);
+			}
+		}catch(IOException e) {
+			throw new PatchingException("Failed to patch Minecraft", e);
+		}
 	}
 	
 	private static void replaceStrings(ClassFile cf, String find, String replace) {
@@ -281,32 +304,37 @@ public class LibraryPatcher {
 		
 		Files.copy(server, outputFile, StandardCopyOption.REPLACE_EXISTING);
 		
+		boolean patched = false;
+		
 		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
 			Path authlibFolder = fs.getPath("/META-INF/libraries/com/mojang/authlib");
-			if(!Files.exists(authlibFolder)) {
-				System.out.println("No authlib found, not patching server");
-				return;
+			if(Files.exists(authlibFolder)) {
+				Path authlibJar = Files.list(Files.list(authlibFolder).findFirst().orElse(null)).findFirst().orElse(null);
+				patchAuthlib(authlibJar, authlibJar, skinHost, serverConfiguration);
+				patched = true;
+				
+				// Update hash
+				byte[] bytes = Files.readAllBytes(authlibJar);
+				MessageDigest digest;
+				try {
+					digest = MessageDigest.getInstance("SHA-256");
+					String newHash = bytesToHex(digest.digest(bytes));
+	
+					Path libListPath = fs.getPath("/META-INF/libraries.list");
+					String libList = Files.readString(libListPath);
+					libList = libList.replaceAll("\n[0-9a-f]+\tcom.mojang.authlib", "\n" + newHash + "\tcom\\.mojang:authlib");
+					Files.writeString(libListPath, libList);
+				} catch (NoSuchAlgorithmException e) {
+					e.printStackTrace();
+				}
+			}else if(!Files.exists(fs.getPath("/com/mojang/authlib"))){
+				System.out.println("Patching server as legacy jar");
+				Files.walk(fs.getPath("/")).forEach(f -> replaceLegacyServers(f, serverConfiguration));
+				patched = true;
 			}
-			
-			Path authlibJar = Files.list(Files.list(authlibFolder).findFirst().orElse(null)).findFirst().orElse(null);
-			patchAuthlib(authlibJar, authlibJar, skinHost, serverConfiguration);
-			
-			// Update hash
-			byte[] bytes = Files.readAllBytes(authlibJar);
-			MessageDigest digest;
-			try {
-				digest = MessageDigest.getInstance("SHA-256");
-				String newHash = bytesToHex(digest.digest(bytes));
-
-				Path libListPath = fs.getPath("/META-INF/libraries.list");
-				String libList = Files.readString(libListPath);
-				libList = libList.replaceAll("\n[0-9a-f]+\tcom.mojang.authlib", "\n" + newHash + "\tcom\\.mojang:authlib");
-				Files.writeString(libListPath, libList);
-			} catch (NoSuchAlgorithmException e) {
-				e.printStackTrace();
-			}
-			
 		}
+		
+		if(!patched) patchAuthlib(server, outputFile, skinHost, serverConfiguration);
 		
 		System.out.println("Done patching server!");
 	}
