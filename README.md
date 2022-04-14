@@ -11,7 +11,7 @@ To compile the tool, use
 ```
 $ mvn package
 ```
-which will generate a `ShittyAuthPatcher-1.0.jar` in the `target` folder
+which will generate a `ShittyAuthPatcher-VERSION.jar` in the `target` folder
 
 # Usage
 The tool can be used to patch both client as well as server jars.
@@ -21,7 +21,7 @@ To patch a client jar file, use the `--client` option
 
 e.g. with `https://your.server` being a server running [ShittyAuthServer](https://github.com/MrLetsplay2003/ShittyAuthServer):
 ```sh
-$ java -jar ShittyAuthPatcher-1.0.jar \
+$ java -jar ShittyAuthPatcher-VERSION.jar \
     --client \
     --all-server https://your.server \
     --client-lib /path/to/your/.minecraft/libraries/com/mojang/authlib/1.18.2/1.18.2.jar \
@@ -39,7 +39,7 @@ To patch a server jar file, use the `--server` option
 
 e.g. with `https://your.server` being a server running [ShittyAuthServer](https://github.com/MrLetsplay2003/ShittyAuthServer):
 ```sh
-$ java -jar ShittyAuthPatcher-1.0.jar \
+$ java -jar ShittyAuthPatcher-VERSION.jar \
     --server \
     --all-server https://your.server \
     --server-jar server.jar \
