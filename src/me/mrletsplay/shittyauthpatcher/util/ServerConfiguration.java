@@ -13,21 +13,23 @@ public class ServerConfiguration implements JSONConvertible {
 		authServer,
 		accountsServer,
 		sessionServer,
-		servicesServer;
+		servicesServer,
+		skinHost;
 	
 	@JSONConstructor
 	public ServerConfiguration() {}
 
-	public ServerConfiguration(String authServer, String accountsServer, String sessionServer, String servicesServer) {
+	public ServerConfiguration(String authServer, String accountsServer, String sessionServer, String servicesServer, String skinHost) {
 		this.authServer = authServer;
 		this.accountsServer = accountsServer;
 		this.sessionServer = sessionServer;
 		this.servicesServer = servicesServer;
+		this.skinHost = skinHost;
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(accountsServer, authServer, servicesServer, sessionServer);
+		return Objects.hash(accountsServer, authServer, servicesServer, sessionServer, skinHost);
 	}
 
 	@Override
@@ -42,7 +44,8 @@ public class ServerConfiguration implements JSONConvertible {
 		return Objects.equals(accountsServer, other.accountsServer)
 				&& Objects.equals(authServer, other.authServer)
 				&& Objects.equals(servicesServer, other.servicesServer)
-				&& Objects.equals(sessionServer, other.sessionServer);
+				&& Objects.equals(sessionServer, other.sessionServer)
+				&& Objects.equals(skinHost, other.skinHost);
 	}
 	
 }

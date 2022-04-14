@@ -83,14 +83,13 @@ public class ShittyAuthPatcher {
 			return;
 		}
 		
-		String skinHostStr = null;
 		ServerConfiguration serverConfiguration = new ServerConfiguration();
 		if(opts.has(allServer)) {
 			serverConfiguration.authServer = opts.valueOf(allServer);
 			serverConfiguration.accountsServer = opts.valueOf(allServer);
 			serverConfiguration.sessionServer = opts.valueOf(allServer);
 			serverConfiguration.servicesServer = opts.valueOf(allServer);
-			skinHostStr = new URL(opts.valueOf(allServer)).getHost();
+			serverConfiguration.skinHost = new URL(opts.valueOf(allServer)).getHost();
 		}
 		
 		// Also allows overriding of specific servers
@@ -98,7 +97,7 @@ public class ShittyAuthPatcher {
 		if(opts.has(accountsServer)) serverConfiguration.accountsServer = opts.valueOf(accountsServer);
 		if(opts.has(sessionServer)) serverConfiguration.sessionServer = opts.valueOf(sessionServer);
 		if(opts.has(servicesServer)) serverConfiguration.servicesServer = opts.valueOf(servicesServer);
-		if(opts.has(skinHost)) skinHostStr = opts.valueOf(skinHost);
+		if(opts.has(skinHost)) serverConfiguration.skinHost = opts.valueOf(skinHost);
 		
 		if(opts.has("client")) {
 			File clientLibFile = opts.valueOf(clientLib);
@@ -113,7 +112,7 @@ public class ShittyAuthPatcher {
 			
 			System.out.println("Output for authlib: " + out.getAbsolutePath());
 			
-			LibraryPatcher.patchAuthlib(clientLibFile.toPath(), out.toPath(), skinHostStr, serverConfiguration);
+			LibraryPatcher.patchAuthlib(clientLibFile.toPath(), out.toPath(), serverConfiguration);
 			
 			if(opts.has("client-patch-minecraft")) {
 				File minecraft = opts.valueOf(clientMinecraft);
@@ -136,7 +135,7 @@ public class ShittyAuthPatcher {
 			}
 			
 			File out = opts.valueOf(serverOut);
-			LibraryPatcher.patchServer(serverFile.toPath(), out.toPath(), skinHostStr, serverConfiguration);
+			LibraryPatcher.patchServer(serverFile.toPath(), out.toPath(), serverConfiguration);
 		}
 	}
 

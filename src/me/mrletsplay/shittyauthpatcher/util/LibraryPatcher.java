@@ -50,12 +50,11 @@ public class LibraryPatcher {
 	 * Patches the authlib jar file
 	 * @param authLib Path to the authlib jar
 	 * @param outputFile Path to store the patched authlib file
-	 * @param skinHost Host name of the skin server
 	 * @param serverConfiguration Servers to use when patching
 	 * @throws IOException If an I/O error occurs while patching
 	 * @throws PatchingException If patching fails
 	 */
-	public static void patchAuthlib(Path authLib, Path outputFile, String skinHost, ServerConfiguration serverConfiguration) throws IOException, PatchingException {
+	public static void patchAuthlib(Path authLib, Path outputFile, ServerConfiguration serverConfiguration) throws IOException, PatchingException {
 		System.out.println("Patching authlib");
 		
 		if(!outputFile.equals(authLib)) Files.copy(authLib, outputFile, StandardCopyOption.REPLACE_EXISTING);
@@ -105,9 +104,8 @@ public class LibraryPatcher {
 					}
 				}
 				
-				String host = skinHost;
-				System.out.println("Patching with host: " + host);
-				int en = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, host));
+				System.out.println("Patching with host: " + serverConfiguration.skinHost);
+				int en = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, serverConfiguration.skinHost));
 				int en2 = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, ".minecraft.net"));
 				
 				iis.subList(0, endIdx).clear();
@@ -294,12 +292,11 @@ public class LibraryPatcher {
 	 * Patches the server jar file
 	 * @param server Path to the server jar
 	 * @param outputFile Path to store the patched server file
-	 * @param skinHost Host name of the skin server
 	 * @param serverConfiguration Servers to use when patching
 	 * @throws IOException If an I/O error occurs while patching
 	 * @throws PatchingException If patching fails
 	 */
-	public static void patchServer(Path server, Path outputFile, String skinHost, ServerConfiguration serverConfiguration) throws IOException, PatchingException {
+	public static void patchServer(Path server, Path outputFile, ServerConfiguration serverConfiguration) throws IOException, PatchingException {
 		System.out.println("Patching server");
 		
 		Files.copy(server, outputFile, StandardCopyOption.REPLACE_EXISTING);
@@ -310,7 +307,7 @@ public class LibraryPatcher {
 			Path authlibFolder = fs.getPath("/META-INF/libraries/com/mojang/authlib");
 			if(Files.exists(authlibFolder)) {
 				Path authlibJar = Files.list(Files.list(authlibFolder).findFirst().orElse(null)).findFirst().orElse(null);
-				patchAuthlib(authlibJar, authlibJar, skinHost, serverConfiguration);
+				patchAuthlib(authlibJar, authlibJar, serverConfiguration);
 				patched = true;
 				
 				// Update hash
@@ -334,7 +331,7 @@ public class LibraryPatcher {
 			}
 		}
 		
-		if(!patched) patchAuthlib(server, outputFile, skinHost, serverConfiguration);
+		if(!patched) patchAuthlib(server, outputFile, serverConfiguration);
 		
 		System.out.println("Done patching server!");
 	}
