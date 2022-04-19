@@ -20,7 +20,14 @@ public class Library {
 	}
 	
 	public DownloadableFile getArtifactDownload() {
-		if(!library.has("downloads")) return null;
+		if(!library.has("downloads")) {
+			if(library.has("url")) {
+				// Used by FabricMC
+				String path = getGeneratedPath();
+				return new DownloadableFile(path, library.getString("url") + "/" + path);
+			}
+			return null;
+		}
 		JSONObject downloads = library.getJSONObject("downloads");
 		if(!downloads.has("artifact")) return null;
 		JSONObject artifact = downloads.getJSONObject("artifact");

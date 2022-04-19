@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import me.mrletsplay.mrcore.http.HttpRequest;
+import me.mrletsplay.mrcore.io.IOUtils;
 import me.mrletsplay.mrcore.json.JSONObject;
 import me.mrletsplay.mrcore.json.converter.JSONConstructor;
 import me.mrletsplay.mrcore.json.converter.JSONConverter;
@@ -131,6 +132,7 @@ public class MinecraftVersion implements JSONConvertible {
 			if(!cacheFile.exists()) {
 				System.out.println("Downloading " + cacheFile + "...");
 				JSONObject dl = downloadMetadata();
+				IOUtils.createFile(cacheFile);
 				Files.writeString(cacheFile.toPath(), dl.toString());
 			}
 			
