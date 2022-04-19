@@ -16,12 +16,14 @@ import me.mrletsplay.mrcore.json.converter.JSONValue;
 public class MinecraftVersion implements JSONConvertible {
 	
 	// TODO: java runtime: https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json
-	
+
 	public static final List<MinecraftVersion> VERSIONS = new ArrayList<>();
 	public static final MinecraftVersion LATEST_RELEASE, LATEST_SNAPSHOT;
-	
+//	public static final String MOD_MAIN_PATH = "net/ddns/minersonline/mc/moded_client/MainClass.class",
+//			MOD_MAIN_NAME = "net.ddns.minersonline.mc.moded_client.MainClass";
+
 	static {
-		JSONObject obj = HttpRequest.createGet("http://launchermeta.mojang.com/mc/game/version_manifest.json").execute().asJSONObject();
+		JSONObject obj = HttpRequest.createGet("https://minersonline.ddns.net/download/version_manifest.json").execute().asJSONObject();
 		
 		for(Object o : obj.getJSONArray("versions")) {
 			VERSIONS.add(JSONConverter.decodeObject((JSONObject) o, MinecraftVersion.class));
@@ -79,14 +81,14 @@ public class MinecraftVersion implements JSONConvertible {
 				.filter(v -> v.getId().equals(id))
 				.findFirst().orElse(null);
 	}
-	
+
 	public JSONObject loadMetadata(File cacheFile) throws IOException {
 		if(cacheFile != null) {
 			if(!cacheFile.exists()) {
 				System.out.println("Downloading " + cacheFile + "...");
 				HttpRequest.createGet(url).execute().transferTo(cacheFile);
 			}
-			
+
 			JSONObject meta;
 			try {
 				meta = new JSONObject(Files.readString(cacheFile.toPath()));
@@ -94,7 +96,7 @@ public class MinecraftVersion implements JSONConvertible {
 				e.printStackTrace();
 				return null;
 			}
-			
+
 			return meta;
 		}else {
 			return HttpRequest.createGet(url).execute().asJSONObject();
