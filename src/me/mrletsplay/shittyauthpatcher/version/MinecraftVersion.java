@@ -3,15 +3,22 @@ package me.mrletsplay.shittyauthpatcher.version;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import me.mrletsplay.mrcore.http.HttpRequest;
+import me.mrletsplay.mrcore.io.IOUtils;
 import me.mrletsplay.mrcore.json.JSONObject;
 import me.mrletsplay.mrcore.json.converter.JSONConstructor;
 import me.mrletsplay.mrcore.json.converter.JSONConverter;
 import me.mrletsplay.mrcore.json.converter.JSONConvertible;
 import me.mrletsplay.mrcore.json.converter.JSONValue;
+import me.mrletsplay.shittyauthpatcher.version.meta.MetadataLoadException;
+import me.mrletsplay.shittyauthpatcher.version.meta.VersionMetadata;
 
 public class MinecraftVersion implements JSONConvertible {
 	
@@ -19,8 +26,22 @@ public class MinecraftVersion implements JSONConvertible {
 
 	public static final List<MinecraftVersion> VERSIONS = new ArrayList<>();
 	public static final MinecraftVersion LATEST_RELEASE, LATEST_SNAPSHOT;
+
 //	public static final String MOD_MAIN_PATH = "net/ddns/minersonline/mc/moded_client/MainClass.class",
 //			MOD_MAIN_NAME = "net.ddns.minersonline.mc.moded_client.MainClass";
+
+	
+	public static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
+		    // date/time
+		    .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+		    // offset (hh:mm - "+00:00" when it's zero)
+		    .optionalStart().appendOffset("+HH:MM", "+00:00").optionalEnd()
+		    // offset (hhmm - "+0000" when it's zero)
+		    .optionalStart().appendOffset("+HHMM", "+0000").optionalEnd()
+		    // offset (hh - "Z" when it's zero)
+		    .optionalStart().appendOffset("+HH", "Z").optionalEnd()
+		    // create formatter
+		    .toFormatter();
 
 	static {
 		JSONObject obj = HttpRequest.createGet("https://minersonline.ddns.net/download/version_manifest.json").execute().asJSONObject();
@@ -48,9 +69,22 @@ public class MinecraftVersion implements JSONConvertible {
 	@JSONValue
 	private String url;
 	
+	private JSONObject cachedMeta;
+	
+	private Instant releaseTime;
+	
+	private boolean imported;
+	
 	@JSONConstructor
 	private MinecraftVersion() {}
 	
+	public MinecraftVersion(String id, MinecraftVersionType type, Instant releaseTime) {
+		this.id = id;
+		this.type = type;
+		this.releaseTime = releaseTime;
+		this.imported = true;
+	}
+
 	public String getId() {
 		return id;
 	}
@@ -62,7 +96,11 @@ public class MinecraftVersion implements JSONConvertible {
 	public String getURL() {
 		return url;
 	}
-
+	
+	public boolean isImported() {
+		return imported;
+	}
+	
 	@Override
 	public String toString() {
 		return id;
@@ -82,11 +120,24 @@ public class MinecraftVersion implements JSONConvertible {
 				.findFirst().orElse(null);
 	}
 
-	public JSONObject loadMetadata(File cacheFile) throws IOException {
+	@Override
+	public void preDeserialize(JSONObject object) {
+		releaseTime = Instant.from(TIME_FORMATTER.parse(object.getString("releaseTime")));
+	}
+	
+	private JSONObject downloadMetadata() {
+		if(cachedMeta != null) return cachedMeta;
+		return cachedMeta = HttpRequest.createGet(url).execute().asJSONObject();
+	}
+
+	public VersionMetadata loadMetadata(File cacheFile) throws IOException {
+		if(imported) throw new UnsupportedOperationException("Metadata can't be loaded for imported versions");
 		if(cacheFile != null) {
 			if(!cacheFile.exists()) {
 				System.out.println("Downloading " + cacheFile + "...");
-				HttpRequest.createGet(url).execute().transferTo(cacheFile);
+				JSONObject dl = downloadMetadata();
+				IOUtils.createFile(cacheFile);
+				Files.writeString(cacheFile.toPath(), dl.toString());
 			}
 
 			JSONObject meta;
@@ -97,14 +148,25 @@ public class MinecraftVersion implements JSONConvertible {
 				return null;
 			}
 
-			return meta;
+			return new VersionMetadata(meta);
 		}else {
-			return HttpRequest.createGet(url).execute().asJSONObject();
+			return new VersionMetadata(downloadMetadata());
 		}
 	}
 	
-	public JSONObject loadMetadata() throws IOException {
+	public VersionMetadata loadMetadata() throws IOException {
 		return loadMetadata(null);
+	}
+	
+	public static void addVersion(MinecraftVersion version) {
+		VERSIONS.add(version);
+		VERSIONS.sort(Comparator.<MinecraftVersion, Instant>comparing(v -> {
+			try {
+				return v.releaseTime == null ? v.releaseTime = v.loadMetadata().getReleaseTime() : v.releaseTime;
+			} catch (IOException e) {
+				throw new MetadataLoadException(e);
+			}
+		}).reversed());
 	}
 	
 }
