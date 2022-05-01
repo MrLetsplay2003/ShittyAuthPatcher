@@ -17,20 +17,21 @@ import me.mrletsplay.mrcore.json.converter.JSONConstructor;
 import me.mrletsplay.mrcore.json.converter.JSONConverter;
 import me.mrletsplay.mrcore.json.converter.JSONConvertible;
 import me.mrletsplay.mrcore.json.converter.JSONValue;
+import me.mrletsplay.shittyauthpatcher.mirrors.MojangMirror;
 import me.mrletsplay.shittyauthpatcher.version.meta.MetadataLoadException;
 import me.mrletsplay.shittyauthpatcher.version.meta.VersionMetadata;
+import me.mrletsplay.shittyauthpatcher.mirrors.DownloadsMirror;
 
 public class MinecraftVersion implements JSONConvertible {
 	
 	// TODO: java runtime: https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json
 
 	public static final List<MinecraftVersion> VERSIONS = new ArrayList<>();
-	public static final MinecraftVersion LATEST_RELEASE, LATEST_SNAPSHOT;
+	public static MinecraftVersion LATEST_RELEASE;
+	public static MinecraftVersion LATEST_SNAPSHOT;
 
-//	public static final String MOD_MAIN_PATH = "net/ddns/minersonline/mc/moded_client/MainClass.class",
-//			MOD_MAIN_NAME = "net.ddns.minersonline.mc.moded_client.MainClass";
+	public static DownloadsMirror DOWNLOADS_MIRROR = new MojangMirror();
 
-	
 	public static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
 		    // date/time
 		    .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
@@ -44,20 +45,28 @@ public class MinecraftVersion implements JSONConvertible {
 		    .toFormatter();
 
 	static {
-		JSONObject obj = HttpRequest.createGet("https://minersonline.ddns.net/download/version_manifest.json").execute().asJSONObject();
-		
+		initVersions();
+	}
+
+	public static void initVersions(){
+		JSONObject obj = HttpRequest.createGet(DOWNLOADS_MIRROR.version_manifest).execute().asJSONObject();
+
 		for(Object o : obj.getJSONArray("versions")) {
 			VERSIONS.add(JSONConverter.decodeObject((JSONObject) o, MinecraftVersion.class));
 		}
-		
+
 		JSONObject latest = obj.getJSONObject("latest");
-		
+
 		LATEST_RELEASE = VERSIONS.stream()
 				.filter(v -> v.getId().equals(latest.getString("release")))
 				.findFirst().orElse(VERSIONS.get(0));
 		LATEST_SNAPSHOT = VERSIONS.stream()
 				.filter(v -> v.getId().equals(latest.getString("snapshot")))
 				.findFirst().orElse(VERSIONS.get(0));
+	}
+
+	public static void changeMirror(DownloadsMirror mirror){
+		DOWNLOADS_MIRROR = mirror;
 	}
 
 	@JSONValue
@@ -168,5 +177,8 @@ public class MinecraftVersion implements JSONConvertible {
 			}
 		}).reversed());
 	}
-	
+
+	public static void clearVersions() {
+		VERSIONS.clear();
+	}
 }
