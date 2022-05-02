@@ -23,59 +23,59 @@ public class ShittyAuthPatcher {
 		parser.acceptsAll(Arrays.asList("client"), "Patch a client jar");
 
 		OptionSpec<File> clientLib = parser.accepts("client-lib", "Path of the authlib jar file")
-				.requiredIf("client")
-				.withRequiredArg().ofType(File.class);
+			.requiredIf("client")
+			.withRequiredArg().ofType(File.class);
 
 		OptionSpec<File> clientLibOut = parser.accepts("client-lib-out", "Output file for the patched authlib jar")
-				.withRequiredArg().ofType(File.class);
+			.withRequiredArg().ofType(File.class);
 
 		parser.accepts("client-patch-minecraft", "Also patch the minecraft jar file")
-				.availableIf("client");
+			.availableIf("client");
 
 		OptionSpec<File> clientMinecraft = parser.accepts("client-minecraft", "Path of the minecraft jar file")
-				.requiredIf("client-patch-minecraft")
-				.withRequiredArg().ofType(File.class);
+			.requiredIf("client-patch-minecraft")
+			.withRequiredArg().ofType(File.class);
 
 		OptionSpec<File> clientMinecraftOut = parser.accepts("client-minecraft-out", "Output file for the patched minecraft jar")
-				.availableIf("client-patch-minecraft")
-				.withRequiredArg().ofType(File.class);
+			.availableIf("client-patch-minecraft")
+			.withRequiredArg().ofType(File.class);
 
 		// Server
 
 		parser.acceptsAll(Arrays.asList("server"), "Patch a server jar");
 
 		OptionSpec<File> serverJar = parser.accepts("server-jar", "Path to the server jar file")
-				.requiredIf("server")
-				.withRequiredArg().ofType(File.class);
+			.requiredIf("server")
+			.withRequiredArg().ofType(File.class);
 
 		OptionSpec<File> serverOut = parser.accepts("server-out", "Output file for the patched server jar")
-				.availableIf("server")
-				.withRequiredArg().ofType(File.class);
+			.availableIf("server")
+			.withRequiredArg().ofType(File.class);
 
 		// Common
 
 		OptionSpec<String> allServer = parser.accepts("all-server", "Shorthand for specifying 'auth-server', 'accounts-server', 'session-server', 'services-server' and 'skin-host' to be the same server")
-				.withRequiredArg().ofType(String.class);
+			.withRequiredArg().ofType(String.class);
 
 		OptionSpec<String> authServer = parser.accepts("auth-server", "Base URL of the authentication server (e.g. 'https://auth.example.com/')")
-				.requiredUnless("all-server")
-				.withRequiredArg().ofType(String.class);
+			.requiredUnless("all-server")
+			.withRequiredArg().ofType(String.class);
 
 		OptionSpec<String> accountsServer = parser.accepts("accounts-server", "Base URL of the accounts server (e.g. 'https://accounts.example.com/')")
-				.requiredUnless("all-server")
-				.withRequiredArg().ofType(String.class);
+			.requiredUnless("all-server")
+			.withRequiredArg().ofType(String.class);
 
 		OptionSpec<String> sessionServer = parser.accepts("session-server", "Base URL of the session server (e.g. 'https://session.example.com/')")
-				.requiredUnless("all-server")
-				.withRequiredArg().ofType(String.class);
+			.requiredUnless("all-server")
+			.withRequiredArg().ofType(String.class);
 
 		OptionSpec<String> servicesServer = parser.accepts("services-server", "Base URL of the api server (e.g. 'https://services.example.com/')")
-				.requiredUnless("all-server")
-				.withRequiredArg().ofType(String.class);
+			.requiredUnless("all-server")
+			.withRequiredArg().ofType(String.class);
 
 		OptionSpec<String> skinHost = parser.accepts("skin-host", "Host name of the skin server (e.g. 'skins.example.com')")
-				.requiredUnless("all-server")
-				.withRequiredArg().ofType(String.class);
+			.requiredUnless("all-server")
+			.withRequiredArg().ofType(String.class);
 
 		OptionSet opts = parser.parse(args);
 		if(opts.has("help") || !opts.hasOptions()) {
