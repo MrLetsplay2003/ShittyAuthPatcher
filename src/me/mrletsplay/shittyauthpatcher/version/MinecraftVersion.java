@@ -30,7 +30,6 @@ public class MinecraftVersion implements JSONConvertible {
 	public static MinecraftVersion LATEST_RELEASE;
 	public static MinecraftVersion LATEST_SNAPSHOT;
 
-	public static DownloadsMirror DOWNLOADS_MIRROR = new MojangMirror();
 
 	public static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
 			// date/time
@@ -45,10 +44,10 @@ public class MinecraftVersion implements JSONConvertible {
 			.toFormatter();
 
 	static {
-		initVersions();
+		initVersions(new MojangMirror());
 	}
 
-	public static void initVersions(){
+	public static void initVersions(DownloadsMirror DOWNLOADS_MIRROR){
 		JSONObject obj = HttpRequest.createGet(DOWNLOADS_MIRROR.version_manifest).execute().asJSONObject();
 
 		for(Object o : obj.getJSONArray("versions")) {
@@ -63,10 +62,6 @@ public class MinecraftVersion implements JSONConvertible {
 		LATEST_SNAPSHOT = VERSIONS.stream()
 				.filter(v -> v.getId().equals(latest.getString("snapshot")))
 				.findFirst().orElse(VERSIONS.get(0));
-	}
-
-	public static void changeMirror(DownloadsMirror mirror){
-		DOWNLOADS_MIRROR = mirror;
 	}
 
 	@JSONValue
