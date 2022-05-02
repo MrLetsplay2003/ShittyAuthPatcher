@@ -14,6 +14,9 @@ public class DownloadsMirror implements JSONConvertible {
 	@JSONValue
 	public String assets_url;
 
+	@JSONValue
+	public boolean custom;
+
 	@JSONConstructor
 	public DownloadsMirror() {}
 
@@ -21,5 +24,6 @@ public class DownloadsMirror implements JSONConvertible {
 		this.name = name;
 		this.version_manifest = version_manifest;
 		this.assets_url = assets_url;
+		this.custom = false;
 	}
 }

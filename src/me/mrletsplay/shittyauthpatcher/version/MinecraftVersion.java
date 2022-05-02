@@ -48,6 +48,7 @@ public class MinecraftVersion implements JSONConvertible {
 	}
 
 	public static void initVersions(DownloadsMirror DOWNLOADS_MIRROR){
+		VERSIONS.clear();
 		JSONObject obj = HttpRequest.createGet(DOWNLOADS_MIRROR.version_manifest).execute().asJSONObject();
 
 		for(Object o : obj.getJSONArray("versions")) {
