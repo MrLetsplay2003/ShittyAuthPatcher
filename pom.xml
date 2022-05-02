@@ -47,12 +47,12 @@
 			<id>Graphite-Official</id>
 			<url>http://graphite-official.com/repo/</url>
 		</repository>
-		<!--<for ajh12>-->
+		<!--<for ajh123>-->
 		<repository>
 			<id>local-maven-repo</id>
 			<url>file://E:\web\maven\repositories\releases</url>
 		</repository>
-		<!--</for ajh12>-->
+		<!--</for ajh123>-->
 	</repositories>
 	<dependencies>
 		<dependency>
