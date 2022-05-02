@@ -23,7 +23,7 @@ import me.mrletsplay.shittyauthpatcher.version.meta.VersionMetadata;
 import me.mrletsplay.shittyauthpatcher.mirrors.DownloadsMirror;
 
 public class MinecraftVersion implements JSONConvertible {
-	
+
 	// TODO: java runtime: https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json
 
 	public static final List<MinecraftVersion> VERSIONS = new ArrayList<>();
@@ -33,16 +33,16 @@ public class MinecraftVersion implements JSONConvertible {
 	public static DownloadsMirror DOWNLOADS_MIRROR = new MojangMirror();
 
 	public static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
-		    // date/time
-		    .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-		    // offset (hh:mm - "+00:00" when it's zero)
-		    .optionalStart().appendOffset("+HH:MM", "+00:00").optionalEnd()
-		    // offset (hhmm - "+0000" when it's zero)
-		    .optionalStart().appendOffset("+HHMM", "+0000").optionalEnd()
-		    // offset (hh - "Z" when it's zero)
-		    .optionalStart().appendOffset("+HH", "Z").optionalEnd()
-		    // create formatter
-		    .toFormatter();
+			// date/time
+			.append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+			// offset (hh:mm - "+00:00" when it's zero)
+			.optionalStart().appendOffset("+HH:MM", "+00:00").optionalEnd()
+			// offset (hhmm - "+0000" when it's zero)
+			.optionalStart().appendOffset("+HHMM", "+0000").optionalEnd()
+			// offset (hh - "Z" when it's zero)
+			.optionalStart().appendOffset("+HH", "Z").optionalEnd()
+			// create formatter
+			.toFormatter();
 
 	static {
 		initVersions();
@@ -71,22 +71,22 @@ public class MinecraftVersion implements JSONConvertible {
 
 	@JSONValue
 	private String id;
-	
+
 	@JSONValue
 	private MinecraftVersionType type;
-	
+
 	@JSONValue
 	private String url;
-	
+
 	private JSONObject cachedMeta;
-	
+
 	private Instant releaseTime;
-	
+
 	private boolean imported;
-	
+
 	@JSONConstructor
 	private MinecraftVersion() {}
-	
+
 	public MinecraftVersion(String id, MinecraftVersionType type, Instant releaseTime) {
 		this.id = id;
 		this.type = type;
@@ -105,24 +105,24 @@ public class MinecraftVersion implements JSONConvertible {
 	public String getURL() {
 		return url;
 	}
-	
+
 	public boolean isImported() {
 		return imported;
 	}
-	
+
 	@Override
 	public String toString() {
 		return id;
 	}
-	
+
 	public boolean isOlderThan(MinecraftVersion other) {
 		return VERSIONS.indexOf(this) > VERSIONS.indexOf(other);
 	}
-	
+
 	public boolean isNewerThan(MinecraftVersion other) {
 		return VERSIONS.indexOf(this) < VERSIONS.indexOf(other);
 	}
-	
+
 	public static MinecraftVersion getVersion(String id) {
 		return VERSIONS.stream()
 				.filter(v -> v.getId().equals(id))
@@ -133,7 +133,7 @@ public class MinecraftVersion implements JSONConvertible {
 	public void preDeserialize(JSONObject object) {
 		releaseTime = Instant.from(TIME_FORMATTER.parse(object.getString("releaseTime")));
 	}
-	
+
 	private JSONObject downloadMetadata() {
 		if(cachedMeta != null) return cachedMeta;
 		return cachedMeta = HttpRequest.createGet(url).execute().asJSONObject();
@@ -162,11 +162,11 @@ public class MinecraftVersion implements JSONConvertible {
 			return new VersionMetadata(downloadMetadata());
 		}
 	}
-	
+
 	public VersionMetadata loadMetadata() throws IOException {
 		return loadMetadata(null);
 	}
-	
+
 	public static void addVersion(MinecraftVersion version) {
 		VERSIONS.add(version);
 		VERSIONS.sort(Comparator.<MinecraftVersion, Instant>comparing(v -> {
