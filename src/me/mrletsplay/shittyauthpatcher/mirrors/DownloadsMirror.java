@@ -9,10 +9,10 @@ public class DownloadsMirror implements JSONConvertible {
 	public String name;
 
 	@JSONValue
-	public String version_manifest;
+	public String versionManifest;
 
 	@JSONValue
-	public String assets_url;
+	public String assetsURL;
 
 	@JSONValue
 	public boolean custom;
@@ -20,10 +20,10 @@ public class DownloadsMirror implements JSONConvertible {
 	@JSONConstructor
 	public DownloadsMirror() {}
 
-	public DownloadsMirror(String name, String version_manifest, String assets_url) {
+	public DownloadsMirror(String name, String versionManifest, String assetsURL) {
 		this.name = name;
-		this.version_manifest = version_manifest;
-		this.assets_url = assets_url;
+		this.versionManifest = versionManifest;
+		this.assetsURL = assetsURL;
 		this.custom = false;
 	}
 }
