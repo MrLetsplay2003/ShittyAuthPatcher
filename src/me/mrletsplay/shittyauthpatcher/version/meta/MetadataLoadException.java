@@ -19,5 +19,5 @@ public class MetadataLoadException extends RuntimeException {
 	public MetadataLoadException(Throwable cause) {
 		super(cause);
 	}
-	
+
 }
