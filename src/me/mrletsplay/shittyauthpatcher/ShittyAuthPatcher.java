@@ -20,7 +20,7 @@ public class ShittyAuthPatcher {
 
 		// Client
 
-		parser.acceptsAll(Arrays.asList("client"), "Patch a client jar");
+		parser.accepts("client", "Patch a client jar");
 
 		OptionSpec<File> clientLib = parser.accepts("client-lib", "Path of the authlib jar file")
 			.requiredIf("client")
@@ -42,7 +42,7 @@ public class ShittyAuthPatcher {
 
 		// Server
 
-		parser.acceptsAll(Arrays.asList("server"), "Patch a server jar");
+		parser.accepts("server", "Patch a server jar");
 
 		OptionSpec<File> serverJar = parser.accepts("server-jar", "Path to the server jar file")
 			.requiredIf("server")

@@ -46,4 +46,4 @@ $ java -jar ShittyAuthPatcher-VERSION.jar \
     --server-out server-patched.jar
 ```
 Notes:
-- `--server-out` are optional and will default to replacing the original jar file if not specified
+- `--server-out` is optional and will default to replacing the original jar file if not specified
