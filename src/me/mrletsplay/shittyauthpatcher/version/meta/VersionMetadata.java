@@ -1,7 +1,8 @@
 package me.mrletsplay.shittyauthpatcher.version.meta;
 
-import java.io.IOException;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,24 +10,33 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import me.mrletsplay.mrcore.json.JSONObject;
-import me.mrletsplay.shittyauthpatcher.version.MinecraftVersion;
+import me.mrletsplay.shittyauthpatcher.version.AbstractMinecraftVersion;
+import me.mrletsplay.shittyauthpatcher.version.MinecraftVersionType;
 
 public class VersionMetadata {
+
+	public static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
+		// date/time
+		.append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+		// offset (hh:mm - "+00:00" when it's zero)
+		.optionalStart().appendOffset("+HH:MM", "+00:00").optionalEnd()
+		// offset (hhmm - "+0000" when it's zero)
+		.optionalStart().appendOffset("+HHMM", "+0000").optionalEnd()
+		// offset (hh - "Z" when it's zero)
+		.optionalStart().appendOffset("+HH", "Z").optionalEnd()
+		// create formatter
+		.toFormatter();
 
 	private JSONObject meta;
 	private VersionMetadata inheritsFromMeta;
 
-	public VersionMetadata(JSONObject meta) {
+	public VersionMetadata(AbstractMinecraftVersion version, JSONObject meta) {
 		this.meta = meta;
 		if(meta.has("inheritsFrom")) {
 			String i = meta.getString("inheritsFrom");
-			MinecraftVersion inherit = MinecraftVersion.getVersion(i);
-			if(inherit == null) throw new MetadataLoadException("Unknown version in inheritsFrom field: " + i);
-			try {
-				this.inheritsFromMeta = inherit.loadMetadata();
-			} catch (IOException e) {
-				throw new MetadataLoadException(e);
-			}
+			AbstractMinecraftVersion inherit = version.getMirror().getVersions().getVersion(i);
+			if(inherit == null) throw new MetadataLoadException("Version '" + getId() + "' inherits from unknown version: " + i);
+			this.inheritsFromMeta = inherit.getMetadata();
 		}
 	}
 
@@ -119,8 +129,8 @@ public class VersionMetadata {
 		return meta.has("minecraftArguments") || (inheritsFromMeta != null && inheritsFromMeta.usesLegacyArgs());
 	}
 
-	public String getType() {
-		return meta.getString("type");
+	public MinecraftVersionType getType() {
+		return MinecraftVersionType.decodePrimitive(meta.getString("type"));
 	}
 
 	public String getMainClass() {
@@ -133,7 +143,7 @@ public class VersionMetadata {
 	}
 
 	public Instant getReleaseTime() {
-		return Instant.from(MinecraftVersion.TIME_FORMATTER.parse(meta.getString("releaseTime")));
+		return Instant.from(TIME_FORMATTER.parse(meta.getString("releaseTime")));
 	}
 
 }

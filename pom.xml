@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>me.mrletsplay</groupId>
 	<artifactId>ShittyAuthPatcher</artifactId>
-	<version>1.4.3</version>
+	<version>1.5</version>
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<plugins>
@@ -13,6 +13,7 @@
 				<version>3.8.1</version>
 				<configuration>
 					<release>11</release>
+					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -52,7 +53,7 @@
 		<dependency>
 			<groupId>me.mrletsplay</groupId>
 			<artifactId>MrCore</artifactId>
-			<version>3.5.2</version>
+			<version>4.1</version>
 		</dependency>
 		<dependency>
 			<groupId>net.sf.jopt-simple</groupId>
