@@ -21,9 +21,15 @@ public class VersionsList {
 		initVersions(manifestJSON);
 	}
 
+	public VersionsList() {
+
+	}
+
 	private void initVersions(JSONObject manifestJSON){
 		for(Object o : manifestJSON.getJSONArray("versions")) {
-			versions.add(JSONConverter.decodeObject((JSONObject) o, DefaultMinecraftVersion.class));
+			DefaultMinecraftVersion v = JSONConverter.decodeObject((JSONObject) o, DefaultMinecraftVersion.class);
+			v.setList(this);
+			versions.add(v);
 		}
 
 		JSONObject latest = manifestJSON.getJSONObject("latest");
@@ -41,21 +47,18 @@ public class VersionsList {
 	}
 
 	public AbstractMinecraftVersion getLatestRelease() {
+		if(latestRelease == null) return versions.stream()
+			.filter(v -> v.getType() == MinecraftVersionType.RELEASE)
+			.findFirst().orElse(null);
 		return latestRelease;
 	}
 
 	public AbstractMinecraftVersion getLatestSnapshot() {
+		if(latestSnapshot == null) return versions.stream()
+			.filter(v -> v.getType() == MinecraftVersionType.SNAPSHOT)
+			.findFirst().orElse(null);
 		return latestSnapshot;
 	}
-
-	public boolean isVersionOlderThan(DefaultMinecraftVersion version, DefaultMinecraftVersion other) {
-		return versions.indexOf(version) > versions.indexOf(other);
-	}
-
-	public boolean isVersionNewerThan(DefaultMinecraftVersion version, DefaultMinecraftVersion other) {
-		return versions.indexOf(version) < versions.indexOf(other);
-	}
-
 	public AbstractMinecraftVersion getVersion(String id) {
 		return versions.stream()
 			.filter(v -> v.getId().equals(id))
@@ -63,13 +66,21 @@ public class VersionsList {
 	}
 
 	public void addVersion(AbstractMinecraftVersion version) {
+		version.setList(this);
 		versions.add(version);
 		versions.sort(Comparator.<AbstractMinecraftVersion, Instant>comparing(v -> v.getReleaseTime()).reversed());
 	}
 
-	public void addVersions(Collection<? extends AbstractMinecraftVersion> version) {
-		versions.addAll(version);
-		versions.sort(Comparator.<AbstractMinecraftVersion, Instant>comparing(v -> v.getReleaseTime()).reversed());
+	public void addVersions(Collection<? extends AbstractMinecraftVersion> versions) {
+		versions.forEach(v -> v.setList(this));
+		this.versions.addAll(versions);
+		this.versions.sort(Comparator.<AbstractMinecraftVersion, Instant>comparing(v -> v.getReleaseTime()).reversed());
+	}
+
+	public void addVersions(VersionsList versions) {
+		// Don't AbstractMinecraftVersion#setList here, because this is used to reference versions from another versions list
+		this.versions.addAll(versions.getVersions());
+		this.versions.sort(Comparator.<AbstractMinecraftVersion, Instant>comparing(v -> v.getReleaseTime()).reversed());
 	}
 
 	public void clearVersions() {

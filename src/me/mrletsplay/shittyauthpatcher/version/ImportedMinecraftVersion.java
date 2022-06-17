@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 import me.mrletsplay.mrcore.json.JSONObject;
-import me.mrletsplay.mrcore.json.converter.JSONConstructor;
 import me.mrletsplay.shittyauthpatcher.version.meta.MetadataLoadException;
 
 /**
@@ -16,11 +15,13 @@ public class ImportedMinecraftVersion extends AbstractMinecraftVersion {
 
 	private File metadataFile;
 
-	@JSONConstructor
-	private ImportedMinecraftVersion() {}
-
-	public ImportedMinecraftVersion(File metadataFile) {
+	public ImportedMinecraftVersion(VersionsList list, File metadataFile) {
+		this.list = list;
 		this.metadataFile = metadataFile;
+	}
+
+	public File getMetadataFile() {
+		return metadataFile;
 	}
 
 	@Override

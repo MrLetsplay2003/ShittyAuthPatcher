@@ -7,7 +7,10 @@ import me.mrletsplay.shittyauthpatcher.version.VersionsList;
 
 public class DownloadsMirror implements JSONConvertible {
 
-	public static final DownloadsMirror MOJANG = new DownloadsMirror("Mojang","http://launchermeta.mojang.com/mc/game/version_manifest.json", "http://resources.download.minecraft.net/");
+	/**
+	 * The default mirror provided by Mojang
+	 */
+	public static final DownloadsMirror MOJANG = new DownloadsMirror("Mojang","https://launchermeta.mojang.com/mc/game/version_manifest.json", "https://resources.download.minecraft.net/");
 
 	@JSONValue
 	private String name;
@@ -29,12 +32,24 @@ public class DownloadsMirror implements JSONConvertible {
 		this.assetsURL = assetsURL;
 	}
 
+	public void setName(String name) {
+		this.name = name;
+	}
+
 	public String getName() {
 		return name;
 	}
 
-	public String getVersionManifest() {
+	public void setVersionManifestURL(String versionManifestURL) {
+		this.versionManifestURL = versionManifestURL;
+	}
+
+	public String getVersionManifestURL() {
 		return versionManifestURL;
+	}
+
+	public void setAssetsURL(String assetsURL) {
+		this.assetsURL = assetsURL;
 	}
 
 	public String getAssetsURL() {
@@ -44,6 +59,11 @@ public class DownloadsMirror implements JSONConvertible {
 	public VersionsList getVersions() {
 		if(versions == null) versions = VersionsList.load(versionManifestURL);
 		return versions;
+	}
+
+	@Override
+	public String toString() {
+		return name;
 	}
 
 }

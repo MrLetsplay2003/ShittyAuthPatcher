@@ -7,26 +7,23 @@ import java.time.Instant;
 
 import me.mrletsplay.mrcore.io.IOUtils;
 import me.mrletsplay.mrcore.json.JSONObject;
-import me.mrletsplay.shittyauthpatcher.mirrors.DownloadsMirror;
 import me.mrletsplay.shittyauthpatcher.version.meta.MetadataLoadException;
 import me.mrletsplay.shittyauthpatcher.version.meta.VersionMetadata;
 
 public abstract class AbstractMinecraftVersion {
 
 	protected String id;
-
 	protected MinecraftVersionType type;
-
-	protected DownloadsMirror mirror;
-
+	protected Instant releaseTime;
+	protected VersionsList list; // Used to resolve inheritsFrom in metadata
 	protected VersionMetadata cachedMeta;
 
-	public void setMirror(DownloadsMirror mirror) {
-		this.mirror = mirror;
+	public void setList(VersionsList list) {
+		this.list = list;
 	}
 
-	public DownloadsMirror getMirror() {
-		return mirror;
+	public VersionsList getList() {
+		return list;
 	}
 
 	public String getId() {
@@ -40,7 +37,16 @@ public abstract class AbstractMinecraftVersion {
 	}
 
 	public Instant getReleaseTime() {
-		return getMetadata().getReleaseTime();
+		if(releaseTime != null) return releaseTime;
+		return releaseTime = getMetadata().getReleaseTime();
+	}
+
+	public boolean isOlderThan(AbstractMinecraftVersion other) {
+		return releaseTime.isBefore(other.releaseTime);
+	}
+
+	public boolean isNewerThan(AbstractMinecraftVersion other) {
+		return releaseTime.isAfter(other.releaseTime);
 	}
 
 	@Override
@@ -79,6 +85,14 @@ public abstract class AbstractMinecraftVersion {
 			return new VersionMetadata(this, meta);
 		}else {
 			return new VersionMetadata(this, loadMetadataJSON());
+		}
+	}
+
+	public VersionMetadata loadMetadata() throws MetadataLoadException {
+		try {
+			return loadMetadata(null);
+		} catch (IOException ignored) { // Cannot happen because we're not using a cache file
+			return null;
 		}
 	}
 

@@ -34,7 +34,7 @@ public class VersionMetadata {
 		this.meta = meta;
 		if(meta.has("inheritsFrom")) {
 			String i = meta.getString("inheritsFrom");
-			AbstractMinecraftVersion inherit = version.getMirror().getVersions().getVersion(i);
+			AbstractMinecraftVersion inherit = version.getList().getVersion(i);
 			if(inherit == null) throw new MetadataLoadException("Version '" + getId() + "' inherits from unknown version: " + i);
 			this.inheritsFromMeta = inherit.getMetadata();
 		}
