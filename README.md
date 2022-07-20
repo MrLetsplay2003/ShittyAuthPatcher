@@ -2,7 +2,7 @@
 A command-line tool for patching Mojang's authlib as well as Minecraft
 
 # Download
-Prebuilt jar files can be downloaded from [here](https://ci.graphite-official.com/job/ShittyAuthPatcher/)
+Prebuilt jar files can be downloaded from [here](https://ci.graphite-official.com/job/ShittyAuthPatcher/19/me.mrletsplay$ShittyAuthPatcher/)
 
 # Compiling the tool
 The tool uses Maven for building.
