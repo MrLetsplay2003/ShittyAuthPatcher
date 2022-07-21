@@ -80,7 +80,7 @@ public class VersionMetadata {
 
 	public JavaVersion getJavaVersion() {
 		if(!meta.has("javaVersion")) {
-			if(inheritsFromMeta == null) throw new MetadataLoadException("Invalid metadata: No java version found");
+			if(inheritsFromMeta == null) return JavaVersion.LEGACY_JRE; // Some versions (e.g. 1.6.x don't have a javaVersion for some reason)
 			return inheritsFromMeta.getJavaVersion();
 		}
 
