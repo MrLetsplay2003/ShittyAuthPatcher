@@ -28,8 +28,9 @@ public class ServerPatch implements Patch {
 			.required();
 
 		parser.accepts(SERVER_OUT, "Output file for the patched server jar")
-			.withRequiredArg().ofType(File.class)
-			.required();
+			.withRequiredArg().ofType(File.class);
+
+		Patch.requireKey(parser);
 		return parser;
 	}
 
@@ -42,8 +43,16 @@ public class ServerPatch implements Patch {
 			throw new FileNotFoundException(serverFile.getAbsolutePath());
 		}
 
-		File out = (File) options.valueOf(SERVER_OUT);
-		LibraryPatcher.patchServer(serverFile.toPath(), out.toPath(), servers);
+		File out = serverFile;
+		if(options.has(SERVER_OUT)) {
+			out = (File) options.valueOf(SERVER_OUT);
+		}
+
+		File key = Patch.getPublicKeyFile(options);
+
+		System.out.println("Output for authlib: " + out.getAbsolutePath());
+
+		LibraryPatcher.patchServer(serverFile.toPath(), out.toPath(), servers, key);
 	}
 
 }

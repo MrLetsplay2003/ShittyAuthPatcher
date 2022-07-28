@@ -28,8 +28,9 @@ public class AuthlibPatch implements Patch {
 			.required();
 
 		parser.accepts(LIBRARY_OUT, "Output file for the patched authlib jar")
-			.withRequiredArg().ofType(File.class)
-			.required();
+			.withRequiredArg().ofType(File.class);
+
+		Patch.requireKey(parser);
 		return parser;
 	}
 
@@ -47,9 +48,11 @@ public class AuthlibPatch implements Patch {
 			out = (File) options.valueOf(LIBRARY_OUT);
 		}
 
+		File key = Patch.getPublicKeyFile(options);
+
 		System.out.println("Output for authlib: " + out.getAbsolutePath());
 
-		LibraryPatcher.patchAuthlib(clientLibFile.toPath(), out.toPath(), servers);
+		LibraryPatcher.patchAuthlib(clientLibFile.toPath(), out.toPath(), servers, key);
 	}
 
 }

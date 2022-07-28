@@ -27,8 +27,7 @@ public class MinecraftPatch implements Patch {
 			.required();
 
 		parser.accepts(MINECRAFT_OUT, "Output file for the patched minecraft jar")
-			.withRequiredArg().ofType(File.class)
-			.required();
+			.withRequiredArg().ofType(File.class);
 		return parser;
 	}
 

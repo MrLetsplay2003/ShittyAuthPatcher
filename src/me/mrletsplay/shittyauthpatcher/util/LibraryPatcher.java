@@ -49,10 +49,11 @@ public class LibraryPatcher {
 	 * @param authLib Path to the authlib jar
 	 * @param outputFile Path to store the patched authlib file
 	 * @param serverConfiguration Servers to use when patching
+	 * @param publicKeyFile The public key file to use when patching
 	 * @throws IOException If an I/O error occurs while patching
 	 * @throws PatchingException If patching fails
 	 */
-	public static void patchAuthlib(Path authLib, Path outputFile, ServerConfiguration serverConfiguration) throws IOException, PatchingException {
+	public static void patchAuthlib(Path authLib, Path outputFile, ServerConfiguration serverConfiguration, File publicKeyFile) throws IOException, PatchingException {
 		System.out.println("Patching authlib");
 
 		if(!outputFile.equals(authLib)) Files.copy(authLib, outputFile, StandardCopyOption.REPLACE_EXISTING);
@@ -132,6 +133,7 @@ public class LibraryPatcher {
 
 			Path environment = fs.getPath("com/mojang/authlib/yggdrasil/YggdrasilEnvironment.class");
 			if(Files.exists(environment)) {
+				System.out.println("Patching YggdrasilEnvironment.class");
 				ClassFile environmentClass;
 				try(InputStream in = Files.newInputStream(environment)) {
 					environmentClass = new ClassFile(in);
@@ -148,9 +150,11 @@ public class LibraryPatcher {
 			}
 
 			Path pubkeyPath = fs.getPath("yggdrasil_session_pubkey.der");
-			File launcherPubkeyFile = new File("shittyauthlauncher/yggdrasil_session_pubkey.der");
-			if(launcherPubkeyFile.exists()) {
-				Files.copy(launcherPubkeyFile.toPath(), pubkeyPath, StandardCopyOption.REPLACE_EXISTING);
+			if(publicKeyFile != null && publicKeyFile.exists()) {
+				System.out.println("Copying public key from " + publicKeyFile.getAbsolutePath());
+				Files.copy(publicKeyFile.toPath(), pubkeyPath, StandardCopyOption.REPLACE_EXISTING);
+			}else {
+				System.out.println("No public key provided or key file doesn't exist. Skipping");
 			}
 		}
 
@@ -173,6 +177,7 @@ public class LibraryPatcher {
 		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
 			Path manifestPath = fs.getPath("/META-INF/MANIFEST.MF");
 			if(Files.exists(manifestPath)) {
+				System.out.println("Patching manifest");
 				Manifest oldManifest;
 				try(InputStream in = Files.newInputStream(manifestPath)) {
 					oldManifest = new Manifest(in);
@@ -187,6 +192,7 @@ public class LibraryPatcher {
 				}
 			}
 
+			System.out.println("Deleting Mojang signatures");
 			Files.deleteIfExists(fs.getPath("/META-INF/MOJANGCS.RSA"));
 			Files.deleteIfExists(fs.getPath("/META-INF/MOJANGCS.SF"));
 			Files.deleteIfExists(fs.getPath("/META-INF/MOJANG_C.DSA"));
@@ -194,6 +200,7 @@ public class LibraryPatcher {
 			Files.deleteIfExists(fs.getPath("/META-INF/CODESIGN.RSA"));
 			Files.deleteIfExists(fs.getPath("/META-INF/CODESIGN.SF"));
 
+			System.out.println("Replacing legacy server URLs");
 			Files.walk(fs.getPath("/")).forEach(f -> replaceLegacyServers(f, serverConfiguration));
 		}
 
@@ -243,10 +250,11 @@ public class LibraryPatcher {
 	 * @param server Path to the server jar
 	 * @param outputFile Path to store the patched server file
 	 * @param serverConfiguration Servers to use when patching
+	 * @param publicKeyFile The public key file to use when patching
 	 * @throws IOException If an I/O error occurs while patching
 	 * @throws PatchingException If patching fails
 	 */
-	public static void patchServer(Path server, Path outputFile, ServerConfiguration serverConfiguration) throws IOException, PatchingException {
+	public static void patchServer(Path server, Path outputFile, ServerConfiguration serverConfiguration, File publicKeyFile) throws IOException, PatchingException {
 		System.out.println("Patching server");
 
 		Files.copy(server, outputFile, StandardCopyOption.REPLACE_EXISTING);
@@ -257,7 +265,7 @@ public class LibraryPatcher {
 			Path authlibFolder = fs.getPath("/META-INF/libraries/com/mojang/authlib");
 			if(Files.exists(authlibFolder)) {
 				Path authlibJar = Files.list(Files.list(authlibFolder).findFirst().orElse(null)).findFirst().orElse(null);
-				patchAuthlib(authlibJar, authlibJar, serverConfiguration);
+				patchAuthlib(authlibJar, authlibJar, serverConfiguration, publicKeyFile);
 				patched = true;
 
 				// Update hash
@@ -281,7 +289,7 @@ public class LibraryPatcher {
 			}
 		}
 
-		if(!patched) patchAuthlib(server, outputFile, serverConfiguration);
+		if(!patched) patchAuthlib(server, outputFile, serverConfiguration, publicKeyFile);
 
 		System.out.println("Done patching server!");
 	}
