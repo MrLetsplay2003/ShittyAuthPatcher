@@ -56,6 +56,6 @@ Notes:
 - This patch currently only works with notchian servers, meaning only the official server jar files provided by Mojang. If you plan on patching your Spigot or Paper server jar, you might need to do some manual work as well.
 
 ## Custom (non-ShittyAuth) server setups
-You can also provide all of the separate servers when patching the jar file if you're not using a ShittyAuthServer instance. Just use the `--patch-skins`, `--patch-accounts`, `--patch-services`, `--patch-session`, `--patch-skins` instead of `--patch-all`. You must also specify the path to the public key of the server using `--patch-key`.
+You can also provide all of the separate servers when patching the jar file if you're not using a ShittyAuthServer instance. Just use the `--patch-auth`, `--patch-accounts`, `--patch-services`, `--patch-session`, `--patch-skins` instead of `--patch-all`. You must also specify the path to the public key of the server using `--patch-key`.
 
 For further information about these parameters, use the `--help` option on any patch.
