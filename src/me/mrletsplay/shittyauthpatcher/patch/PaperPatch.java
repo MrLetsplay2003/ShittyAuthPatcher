@@ -8,7 +8,7 @@ import joptsimple.OptionSet;
 import me.mrletsplay.shittyauthpatcher.util.LibraryPatcher;
 import me.mrletsplay.shittyauthpatcher.util.ServerConfiguration;
 
-public class ServerPatch implements Patch {
+public class PaperPatch implements Patch {
 
 	private static final String
 		SERVER = "server",
@@ -16,7 +16,7 @@ public class ServerPatch implements Patch {
 
 	@Override
 	public String getDescription() {
-		return "Patch for the default (notchian) server jar, as well as the Spigot server jar";
+		return "Patch for the official Paper server jar (1.18+ only)";
 	}
 
 	@Override
@@ -50,9 +50,9 @@ public class ServerPatch implements Patch {
 
 		File key = Patch.getPublicKeyFile(options);
 
-		System.out.println("Output for server: " + out.getAbsolutePath());
+		System.out.println("Output for authlib: " + out.getAbsolutePath());
 
-		LibraryPatcher.patchServer(serverFile.toPath(), out.toPath(), servers, key);
+		LibraryPatcher.patchPaper(serverFile.toPath(), out.toPath(), servers, key);
 	}
 
 }

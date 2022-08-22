@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -16,6 +17,8 @@ import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
+import me.mrletsplay.mrcore.http.HttpRequest;
+import me.mrletsplay.mrcore.json.JSONObject;
 import me.mrletsplay.mrcore.misc.classfile.ByteCode;
 import me.mrletsplay.mrcore.misc.classfile.ClassField;
 import me.mrletsplay.mrcore.misc.classfile.ClassFile;
@@ -27,6 +30,12 @@ import me.mrletsplay.mrcore.misc.classfile.pool.entry.ConstantPoolEntry;
 import me.mrletsplay.mrcore.misc.classfile.pool.entry.ConstantPoolFieldRefEntry;
 import me.mrletsplay.mrcore.misc.classfile.pool.entry.ConstantPoolStringEntry;
 import me.mrletsplay.mrcore.misc.classfile.util.ClassFileUtils;
+import me.mrletsplay.shittyauthpatcher.mirrors.DownloadsMirror;
+import me.mrletsplay.shittyauthpatcher.version.AbstractMinecraftVersion;
+import me.mrletsplay.shittyauthpatcher.version.VersionsList;
+import me.mrletsplay.shittyauthpatcher.version.meta.DownloadableFile;
+import me.mrletsplay.shittyauthpatcher.version.meta.Library;
+import me.mrletsplay.shittyauthpatcher.version.meta.VersionMetadata;
 
 public class LibraryPatcher {
 
@@ -270,18 +279,11 @@ public class LibraryPatcher {
 
 				// Update hash
 				byte[] bytes = Files.readAllBytes(authlibJar);
-				MessageDigest digest;
-				try {
-					digest = MessageDigest.getInstance("SHA-256");
-					String newHash = bytesToHex(digest.digest(bytes));
-
-					Path libListPath = fs.getPath("/META-INF/libraries.list");
-					String libList = Files.readString(libListPath);
-					libList = libList.replaceAll("\n[0-9a-f]+\tcom.mojang.authlib", "\n" + newHash + "\tcom\\.mojang:authlib");
-					Files.writeString(libListPath, libList);
-				} catch (NoSuchAlgorithmException e) {
-					e.printStackTrace();
-				}
+				String newHash = sha256hash(bytes);
+				Path libListPath = fs.getPath("/META-INF/libraries.list");
+				String libList = Files.readString(libListPath);
+				libList = libList.replaceAll("\n[0-9a-f]+\tcom.mojang.authlib", "\n" + newHash + "\tcom\\.mojang:authlib");
+				Files.writeString(libListPath, libList);
 			}else if(!Files.exists(fs.getPath("/com/mojang/authlib"))){
 				System.out.println("Patching server as legacy jar");
 				Files.walk(fs.getPath("/")).forEach(f -> replaceLegacyServers(f, serverConfiguration));
@@ -294,6 +296,62 @@ public class LibraryPatcher {
 		System.out.println("Done patching server!");
 	}
 
+	/**
+	 * Patches the server jar file
+	 * @param server Path to the server jar
+	 * @param outputFile Path to store the patched server file
+	 * @param serverConfiguration Servers to use when patching
+	 * @param publicKeyFile The public key file to use when patching
+	 * @throws IOException If an I/O error occurs while patching
+	 * @throws PatchingException If patching fails
+	 */
+	public static void patchPaper(Path server, Path outputFile, ServerConfiguration serverConfiguration, File publicKeyFile) throws IOException, PatchingException {
+		System.out.println("Patching Paper server");
+
+		Files.copy(server, outputFile, StandardCopyOption.REPLACE_EXISTING);
+
+		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
+			Path version = fs.getPath("version.json");
+			if(!Files.exists(version)) throw new PatchingException("version.json not found in server jar. Might be an older version of Paper");
+
+			JSONObject verObj = new JSONObject(Files.readString(version, StandardCharsets.UTF_8));
+			String verID = verObj.getString("id");
+			System.out.println("Server version: " + verID);
+
+			System.out.println("Loading versions list...");
+			VersionsList list = DownloadsMirror.MOJANG.getVersions();
+
+			AbstractMinecraftVersion v = list.getVersion(verID);
+			if(v == null) throw new PatchingException("Couldn't find version in Mojang's version metadata. Might be an unofficial Paper build");
+
+			VersionMetadata meta = v.getMetadata();
+			Library authlib = meta.getLibraries().stream()
+				.filter(l -> l.getName().startsWith("com.mojang:authlib"))
+				.findFirst().orElse(null);
+			if(authlib == null) throw new PatchingException("Authlib not found in version metadata");
+
+			DownloadableFile download = authlib.getArtifactDownload();
+			System.out.println("Downloading authlib from " + download.getURL());
+			byte[] bytes = HttpRequest.createGet(download.getURL()).execute().asRaw();
+			Path authlibJar = fs.getPath("/META-INF/libraries/", download.getPath());
+			Files.createDirectories(authlibJar.getParent());
+			System.out.println("Writing to " + authlibJar.toAbsolutePath());
+			Files.write(authlibJar, bytes);
+
+			patchAuthlib(authlibJar, authlibJar, serverConfiguration, publicKeyFile);
+
+			// Update hash
+			byte[] bytes2 = Files.readAllBytes(authlibJar);
+			String newHash = sha256hash(bytes2);
+			Path libListPath = fs.getPath("/META-INF/libraries.list");
+			String libList = Files.readString(libListPath);
+			libList = libList.replaceAll("\n[0-9a-f]+\tcom.mojang.authlib", "\n" + newHash + "\tcom\\.mojang:authlib");
+			Files.writeString(libListPath, libList);
+		}
+
+		System.out.println("Done patching server!");
+	}
+
 	private static String bytesToHex(byte[] bytes) {
 		StringBuilder str = new StringBuilder();
 		for(int i = 0; i < bytes.length; i++) {
@@ -302,6 +360,17 @@ public class LibraryPatcher {
 			str.append(hex);
 		}
 		return str.toString();
+	}
+
+	private static String sha256hash(byte[] bytes) {
+		MessageDigest digest;
+		try {
+			digest = MessageDigest.getInstance("SHA-256");
+			String newHash = bytesToHex(digest.digest(bytes));
+			return newHash;
+		} catch (NoSuchAlgorithmException e) {
+			throw new PatchingException(e);
+		}
 	}
 
 }

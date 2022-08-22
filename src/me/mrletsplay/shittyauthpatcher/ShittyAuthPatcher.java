@@ -7,6 +7,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import me.mrletsplay.shittyauthpatcher.patch.AuthlibPatch;
 import me.mrletsplay.shittyauthpatcher.patch.MinecraftPatch;
+import me.mrletsplay.shittyauthpatcher.patch.PaperPatch;
 import me.mrletsplay.shittyauthpatcher.patch.Patch;
 import me.mrletsplay.shittyauthpatcher.patch.ServerPatch;
 
@@ -18,6 +19,7 @@ public class ShittyAuthPatcher {
 		PATCHES.put("authlib", new AuthlibPatch());
 		PATCHES.put("minecraft", new MinecraftPatch());
 		PATCHES.put("server", new ServerPatch());
+		PATCHES.put("paper", new PaperPatch());
 	}
 
 	public static void main(String[] args) throws Exception {
