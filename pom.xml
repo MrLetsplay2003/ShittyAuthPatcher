@@ -46,7 +46,7 @@
 	<repositories>
 		<repository>
 			<id>Graphite-Official</id>
-			<url>http://graphite-official.com/repo/</url>
+			<url>https://maven.graphite-official.com/releases</url>
 		</repository>
 	</repositories>
 	<dependencies>
