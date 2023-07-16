@@ -68,6 +68,20 @@ public class LibraryPatcher {
 		if(!outputFile.equals(authLib)) Files.copy(authLib, outputFile, StandardCopyOption.REPLACE_EXISTING);
 
 		try(FileSystem fs = FileSystems.newFileSystem(outputFile, (ClassLoader) null)) {
+			Path textureUrlChecker = fs.getPath("com/mojang/authlib/yggdrasil/TextureUrlChecker.class");
+			if(Files.exists(textureUrlChecker)) { // New location for whitelisted URLs (1.19+)
+				ClassFile textureUrlCheckerClass;
+				try(InputStream in = Files.newInputStream(textureUrlChecker)) {
+					textureUrlCheckerClass = new ClassFile(in);
+				}
+
+				patchAllowedURLsList(textureUrlCheckerClass, serverConfiguration);
+
+				try(OutputStream fOut = Files.newOutputStream(textureUrlChecker)) {
+					textureUrlCheckerClass.write(fOut);
+				}
+			}
+
 			Path sessionService = fs.getPath("com/mojang/authlib/yggdrasil/YggdrasilMinecraftSessionService.class");
 			if(!Files.exists(sessionService)) {
 				System.out.println("YggdrasilMinecraftSessionService.class not found, assuming no authlib");
@@ -79,61 +93,7 @@ public class LibraryPatcher {
 				sessionClass = new ClassFile(in);
 			}
 
-			ClassField domainsField = null;
-			for(ClassField f : sessionClass.getFields()) {
-				if(f.getName().getValue().equals("WHITELISTED_DOMAINS")
-						|| f.getName().getValue().equals("ALLOWED_DOMAINS")) domainsField = f;
-			}
-
-			if(domainsField != null) { // Otherwise the version is probably too old (e.g. 1.7.2), and doesn't have whitelisted URLs
-				ClassMethod meth = sessionClass.getMethods("<clinit>")[0];
-
-				AttributeCode codeAttr = meth.getCodeAttribute();
-
-				ByteCode code = codeAttr.getCode();
-				List<InstructionInformation> iis = code.parseCode();
-				int startIdx = -1, endIdx = -1; // Find beginning and end of array initialization
-				for(int i = 0; i < iis.size(); i++) {
-					InstructionInformation ii = iis.get(i);
-					if(ii.getInstruction() == Instruction.ANEWARRAY && startIdx == -1) {
-						startIdx = i;
-					}
-
-					if(ii.getInstruction() == Instruction.PUTSTATIC) {
-						short s = 0;
-						s += (ii.getInformation()[0] & 0xFF) << 8;
-						s += ii.getInformation()[1] & 0xFF;
-
-						ConstantPoolFieldRefEntry fr = (ConstantPoolFieldRefEntry) sessionClass.getConstantPool().getEntry(s);
-						String fieldName = fr.getNameAndType().getName().getValue();
-						if(fieldName.equals(domainsField.getName().getValue())) { // BLOCKED_DOMAINS / WHITELISTED_DOMAINS
-							endIdx = i;
-						}
-					}
-				}
-
-				System.out.println("Patching with host: " + serverConfiguration.skinHost);
-				int en = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, serverConfiguration.skinHost));
-				int en2 = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, ".minecraft.net"));
-
-				iis.subList(0, endIdx).clear();
-
-				List<InstructionInformation> newInstrs = new ArrayList<>();
-				newInstrs.add(new InstructionInformation(Instruction.ICONST_2));
-				newInstrs.add(new InstructionInformation(Instruction.ANEWARRAY, ClassFileUtils.getShortBytes(ClassFileUtils.getOrAppendClass(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, "java/lang/String")))));
-				newInstrs.add(new InstructionInformation(Instruction.DUP));
-				newInstrs.add(new InstructionInformation(Instruction.ICONST_0));
-				newInstrs.add(new InstructionInformation(Instruction.LDC_W, ClassFileUtils.getShortBytes(en)));
-				newInstrs.add(new InstructionInformation(Instruction.AASTORE));
-				newInstrs.add(new InstructionInformation(Instruction.DUP));
-				newInstrs.add(new InstructionInformation(Instruction.ICONST_1));
-				newInstrs.add(new InstructionInformation(Instruction.LDC_W, ClassFileUtils.getShortBytes(en2)));
-				newInstrs.add(new InstructionInformation(Instruction.AASTORE));
-				iis.addAll(0, newInstrs);
-
-				code.replace(ByteCode.of(iis));
-			}
-
+			patchAllowedURLsArray(sessionClass, serverConfiguration);
 			replaceStrings(sessionClass, DEFAULT_SESSION_SERVER, serverConfiguration.sessionServer);
 
 			try(OutputStream fOut = Files.newOutputStream(sessionService)) {
@@ -168,6 +128,127 @@ public class LibraryPatcher {
 		}
 
 		System.out.println("Done patching authlib!");
+	}
+
+	private static void patchAllowedURLsList(ClassFile textureUrlCheckerClass, ServerConfiguration serverConfiguration) {
+		ClassField domainsField = null;
+		for(ClassField f : textureUrlCheckerClass.getFields()) {
+			if(f.getName().getValue().equals("ALLOWED_DOMAINS")) domainsField = f;
+		}
+
+		if(domainsField == null) {
+			System.out.println("Failed to find ALLOWED_DOMAINS field in TextureUrlChecker");
+			return;
+		}
+
+		ClassMethod meth = textureUrlCheckerClass.getMethods("<clinit>")[0];
+
+		AttributeCode codeAttr = meth.getCodeAttribute();
+
+		ByteCode code = codeAttr.getCode();
+		List<InstructionInformation> iis = code.parseCode();
+		int startIdx = -1, endIdx = -1; // Find beginning and end of array initialization
+		for(int i = 0; i < iis.size(); i++) {
+			InstructionInformation ii = iis.get(i);
+			if(ii.getInstruction() == Instruction.LDC && startIdx == -1) {
+				short s = 0;
+				s += ii.getInformation()[0] & 0xFF;
+				ConstantPoolEntry c = textureUrlCheckerClass.getConstantPool().getEntry(s);
+				if((c instanceof ConstantPoolStringEntry)) {
+					ConstantPoolStringEntry str = (ConstantPoolStringEntry) c;
+					if(str.getString().getValue().equals(".minecraft.net")
+						|| str.getString().getValue().equals(".mojang.com")) {
+						startIdx = i;
+						System.out.println("IDX " + startIdx);
+					}
+				}
+			}
+
+			if(ii.getInstruction() == Instruction.PUTSTATIC) {
+				short s = 0;
+				s += (ii.getInformation()[0] & 0xFF) << 8;
+				s += ii.getInformation()[1] & 0xFF;
+
+				ConstantPoolFieldRefEntry fr = (ConstantPoolFieldRefEntry) textureUrlCheckerClass.getConstantPool().getEntry(s);
+				String fieldName = fr.getNameAndType().getName().getValue();
+				if(fieldName.equals(domainsField.getName().getValue())) {
+					endIdx = i;
+				}
+			}
+		}
+
+		System.out.println("Patching with host: " + serverConfiguration.skinHost);
+		int en = ClassFileUtils.getOrAppendString(textureUrlCheckerClass, ClassFileUtils.getOrAppendUTF8(textureUrlCheckerClass, serverConfiguration.skinHost));
+		int en2 = ClassFileUtils.getOrAppendString(textureUrlCheckerClass, ClassFileUtils.getOrAppendUTF8(textureUrlCheckerClass, ".minecraft.net"));
+
+		iis.subList(startIdx, endIdx).clear();
+
+		List<InstructionInformation> newInstrs = new ArrayList<>();
+		newInstrs.add(new InstructionInformation(Instruction.LDC_W, ClassFileUtils.getShortBytes(en)));
+		newInstrs.add(new InstructionInformation(Instruction.LDC_W, ClassFileUtils.getShortBytes(en2)));
+		newInstrs.add(new InstructionInformation(Instruction.INVOKESTATIC, ClassFileUtils.getShortBytes(ClassFileUtils.getOrAppendInterfaceMethodRef(textureUrlCheckerClass, ClassFileUtils.getOrAppendClass(textureUrlCheckerClass, ClassFileUtils.getOrAppendUTF8(textureUrlCheckerClass, "java/util/List")), ClassFileUtils.getOrAppendNameAndType(textureUrlCheckerClass, ClassFileUtils.getOrAppendUTF8(textureUrlCheckerClass, "of"), ClassFileUtils.getOrAppendUTF8(textureUrlCheckerClass, "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;"))))));
+		iis.addAll(startIdx, newInstrs);
+
+		code.replace(ByteCode.of(iis));
+	}
+
+	private static void patchAllowedURLsArray(ClassFile sessionClass, ServerConfiguration serverConfiguration) {
+		ClassField domainsField = null;
+		for(ClassField f : sessionClass.getFields()) {
+			if(f.getName().getValue().equals("WHITELISTED_DOMAINS")
+					|| f.getName().getValue().equals("ALLOWED_DOMAINS")) domainsField = f;
+		}
+
+		if(domainsField == null) { // Otherwise the version is probably too old (e.g. 1.7.2), and doesn't have whitelisted URLs
+			return;
+		}
+
+		ClassMethod meth = sessionClass.getMethods("<clinit>")[0];
+
+		AttributeCode codeAttr = meth.getCodeAttribute();
+
+		ByteCode code = codeAttr.getCode();
+		List<InstructionInformation> iis = code.parseCode();
+		int startIdx = -1, endIdx = -1; // Find beginning and end of array initialization
+		for(int i = 0; i < iis.size(); i++) {
+			InstructionInformation ii = iis.get(i);
+			if(ii.getInstruction() == Instruction.ANEWARRAY && startIdx == -1) {
+				startIdx = i;
+			}
+
+			if(ii.getInstruction() == Instruction.PUTSTATIC) {
+				short s = 0;
+				s += (ii.getInformation()[0] & 0xFF) << 8;
+				s += ii.getInformation()[1] & 0xFF;
+
+				ConstantPoolFieldRefEntry fr = (ConstantPoolFieldRefEntry) sessionClass.getConstantPool().getEntry(s);
+				String fieldName = fr.getNameAndType().getName().getValue();
+				if(fieldName.equals(domainsField.getName().getValue())) { // BLOCKED_DOMAINS / WHITELISTED_DOMAINS
+					endIdx = i;
+				}
+			}
+		}
+
+		System.out.println("Patching with host: " + serverConfiguration.skinHost);
+		int en = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, serverConfiguration.skinHost));
+		int en2 = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, ".minecraft.net"));
+
+		iis.subList(startIdx, endIdx).clear();
+
+		List<InstructionInformation> newInstrs = new ArrayList<>();
+		newInstrs.add(new InstructionInformation(Instruction.ICONST_2));
+		newInstrs.add(new InstructionInformation(Instruction.ANEWARRAY, ClassFileUtils.getShortBytes(ClassFileUtils.getOrAppendClass(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, "java/lang/String")))));
+		newInstrs.add(new InstructionInformation(Instruction.DUP));
+		newInstrs.add(new InstructionInformation(Instruction.ICONST_0));
+		newInstrs.add(new InstructionInformation(Instruction.LDC_W, ClassFileUtils.getShortBytes(en)));
+		newInstrs.add(new InstructionInformation(Instruction.AASTORE));
+		newInstrs.add(new InstructionInformation(Instruction.DUP));
+		newInstrs.add(new InstructionInformation(Instruction.ICONST_1));
+		newInstrs.add(new InstructionInformation(Instruction.LDC_W, ClassFileUtils.getShortBytes(en2)));
+		newInstrs.add(new InstructionInformation(Instruction.AASTORE));
+		iis.addAll(startIdx, newInstrs);
+
+		code.replace(ByteCode.of(iis));
 	}
 
 	/**
