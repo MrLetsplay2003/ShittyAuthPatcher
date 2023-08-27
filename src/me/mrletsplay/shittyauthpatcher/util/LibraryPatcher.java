@@ -229,6 +229,8 @@ public class LibraryPatcher {
 			}
 		}
 
+		startIdx--; // To get the ICONST_ instruction as well
+
 		System.out.println("Patching with host: " + serverConfiguration.skinHost);
 		int en = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, serverConfiguration.skinHost));
 		int en2 = ClassFileUtils.getOrAppendString(sessionClass, ClassFileUtils.getOrAppendUTF8(sessionClass, ".minecraft.net"));
