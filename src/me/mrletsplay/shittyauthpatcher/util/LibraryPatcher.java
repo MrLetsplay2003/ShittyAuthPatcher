@@ -13,6 +13,7 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
@@ -294,6 +295,13 @@ public class LibraryPatcher {
 
 			System.out.println("Replacing legacy server URLs");
 			Files.walk(fs.getPath("/")).forEach(f -> replaceLegacyServers(f, serverConfiguration));
+
+			Path minecraftPath = fs.getPath("/net/minecraft/client/Minecraft.class");
+			if(Files.exists(minecraftPath)) {
+				// Some versions of Minecraft alpha (1.2.0 - 1.2.6) don't correctly handle player names which causes skins to break
+				System.out.println("Patching old alpha weirdness (if applicable)");
+				patchAlphaWeirdness(minecraftPath);
+			}
 		}
 
 		System.out.println("Done patching Minecraft!");
@@ -334,6 +342,67 @@ public class LibraryPatcher {
 					cf.getConstantPool().setEntry(i, new ConstantPoolStringEntry(cf.getConstantPool(), ClassFileUtils.getOrAppendUTF8(cf, s.replace(find, replace))));
 				}
 			}
+		}
+	}
+
+	private static void patchAlphaWeirdness(Path minecraftPath) {
+		try {
+			ClassFile cf;
+			try(InputStream in = Files.newInputStream(minecraftPath)) {
+				cf = new ClassFile(in);
+			}
+
+			ClassMethod mainMethod = Arrays.stream(cf.getMethods("main"))
+				.filter(m -> m.getDescriptor().getValue().equals("([Ljava/lang/String;)V"))
+				.findFirst().orElse(null);
+
+			if(mainMethod != null) {
+				ByteCode code = mainMethod.getCodeAttribute().getCode();
+				List<InstructionInformation> instructions = code.parseCode();
+
+				boolean doPatch = false;
+				for(int i = 0; i < instructions.size(); i++) {
+					InstructionInformation ii = instructions.get(i);
+					if(ii.getInstruction() == Instruction.LDC) {
+						ConstantPoolEntry en = cf.getConstantPool().getEntry(ii.getInformation()[0] & 0xFF);
+						if(en instanceof ConstantPoolStringEntry) {
+							String value = ((ConstantPoolStringEntry) en).getString().getValue();
+							if(value.equals("Player") || value.equals("Player254")) {
+								// These values are used in
+								// playerName = "Player" + (System.currentTimeMillis() % 1000)
+								// playerName = "Player254"
+								// In some alpha versions (1.2.0 - 1.2.6) they might always be assigned incorrectly, so just assign the correct value (args[0])
+								doPatch = true;
+							}
+						}
+					}
+				}
+
+				if(doPatch) {
+					System.out.println("Applying alpha weirdness patch");
+					/*
+					 * Expected bytecode:
+					 * aload_1 // = playerName
+					 * aload_2 // = sessionID
+					 * invokestatic #496 // Method a:(Ljava/lang/String;Ljava/lang/String;)V
+					 * return
+					 */
+					instructions.addAll(instructions.size() - 4, Arrays.asList(
+						new InstructionInformation(Instruction.ALOAD_0),
+						new InstructionInformation(Instruction.ICONST_0),
+						new InstructionInformation(Instruction.AALOAD),
+						new InstructionInformation(Instruction.ASTORE_1) // Should be playerName = args[0]
+					));
+
+					code.replace(ByteCode.of(instructions));
+
+					try(OutputStream out = Files.newOutputStream(minecraftPath)) {
+						cf.write(out);
+					}
+				}
+			}
+		}catch(IOException e) {
+			throw new PatchingException("Failed to patch Minecraft", e);
 		}
 	}
 
